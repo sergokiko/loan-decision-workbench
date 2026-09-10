@@ -84,6 +84,18 @@ describe("loan application public examples", () => {
     });
   });
 
+  it.each([0, -1, -400_000])("rejects a non-positive approved amount of %i", async (amount) => {
+    const repository = new InMemoryLoanRepository();
+    const caller = appRouter.createCaller(createTestContext(repository));
+
+    await expect(
+      caller.loanApplications.decide(approvalInput({ approvedAmountMinor: amount })),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(repository.application.status).toBe("PENDING_REVIEW");
+    expect(repository.audits).toHaveLength(0);
+  });
+
   it("surfaces BAD_REQUEST when the amount exceeds the requested amount", async () => {
     const caller = appRouter.createCaller(createTestContext());
 

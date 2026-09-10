@@ -160,6 +160,7 @@ function validateBusinessRules(
     if (
       input.approvedAmountMinor === undefined ||
       !Number.isInteger(input.approvedAmountMinor) ||
+      input.approvedAmountMinor <= 0 ||
       input.approvedAmountMinor > application.requestedAmountMinor
     ) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid approved amount" });
