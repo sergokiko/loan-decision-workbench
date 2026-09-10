@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
+
+import { formatMinorUnits, parseMinorUnits } from "@/lib/money";
 
 export interface DecisionFormValue {
   decision: "APPROVED" | "REJECTED";
@@ -23,15 +25,45 @@ export function DecisionForm({
   const [approvedAmount, setApprovedAmount] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [amountError, setAmountError] = useState<string | null>(null);
+  const [reasonError, setReasonError] = useState<string | null>(null);
+  const amountErrorId = useId();
+  const reasonErrorId = useId();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const trimmedReason = reason.trim();
+    const nextReasonError = trimmedReason ? null : "Enter a reason for this decision.";
+
+    // parseMinorUnits is string-based on purpose. The float path this replaces
+    // rounded 1.005 to 100 minor units instead of 101, and turned "" into 0.
+    const parsedAmount = decision === "APPROVED" ? parseMinorUnits(approvedAmount) : null;
+    let nextAmountError: string | null = null;
+
+    if (decision === "APPROVED") {
+      if (parsedAmount === null) {
+        nextAmountError = "Enter an amount in euros, using at most two decimal places.";
+      } else if (parsedAmount <= 0) {
+        nextAmountError = "The approved amount must be greater than zero.";
+      } else if (parsedAmount > requestedAmountMinor) {
+        nextAmountError = `The approved amount cannot exceed ${formatMinorUnits(requestedAmountMinor)}.`;
+      }
+    }
+
+    setReasonError(nextReasonError);
+    setAmountError(nextAmountError);
+
+    if (nextReasonError || nextAmountError) {
+      return;
+    }
+
     setSubmitting(true);
     try {
       const value: DecisionFormValue =
-        decision === "APPROVED"
-          ? { decision, approvedAmountMinor: Math.round(Number(approvedAmount) * 100), reason }
-          : { decision, reason };
+        decision === "APPROVED" && parsedAmount !== null
+          ? { decision, approvedAmountMinor: parsedAmount, reason: trimmedReason }
+          : { decision, reason: trimmedReason };
       await onSubmit(value);
     } finally {
       setSubmitting(false);
@@ -39,7 +71,7 @@ export function DecisionForm({
   }
 
   return (
-    <form className="decision-form" onSubmit={(event) => void handleSubmit(event)}>
+    <form className="decision-form" noValidate onSubmit={(event) => void handleSubmit(event)}>
       <fieldset disabled={disabled || submitting}>
         <legend>Decision</legend>
         <label className="radio-row">
@@ -65,32 +97,44 @@ export function DecisionForm({
 
         {decision === "APPROVED" ? (
           <label>
-            Approved amount
+            Approved amount in euros
             <span className="input-affix">
-              <span aria-hidden="true">€</span>
+              <span aria-hidden="true" className="euro-label">
+                €
+              </span>
               <input
+                aria-describedby={amountError ? amountErrorId : undefined}
+                aria-invalid={amountError ? true : undefined}
+                className="amount-input"
                 inputMode="decimal"
-                max={(requestedAmountMinor / 100).toFixed(2)}
-                min="0.01"
                 onChange={(event) => setApprovedAmount(event.target.value)}
-                required
-                step="0.01"
-                type="number"
+                type="text"
                 value={approvedAmount}
               />
             </span>
+            {amountError ? (
+              <span className="field-error" id={amountErrorId} role="alert">
+                {amountError}
+              </span>
+            ) : null}
           </label>
         ) : null}
 
         <label>
           Reason
           <textarea
-            minLength={1}
+            aria-describedby={reasonError ? reasonErrorId : undefined}
+            aria-invalid={reasonError ? true : undefined}
+            maxLength={1_000}
             onChange={(event) => setReason(event.target.value)}
-            required
             rows={4}
             value={reason}
           />
+          {reasonError ? (
+            <span className="field-error" id={reasonErrorId} role="alert">
+              {reasonError}
+            </span>
+          ) : null}
         </label>
 
         <button className="primary-button" type="submit">

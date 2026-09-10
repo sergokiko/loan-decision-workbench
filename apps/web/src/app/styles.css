@@ -149,7 +149,14 @@ h2 {
   border-radius: 8px;
   display: flex;
   overflow: hidden;
-  padding-left: 12px;
+  position: relative;
+}
+
+.euro-label {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .input-affix input,
@@ -276,4 +283,23 @@ td a {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.field-error {
+  color: #a3161d;
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+.status-pending_review {
+  background: #fff4d6;
+  color: #7a5300;
+}
+
+/* Two classes (0,2,0) so this beats `.input-affix input` (0,1,1); a bare
+   `.amount-input` loses to it and its `padding` shorthand. 28px clears the
+   absolutely positioned .euro-label, which sits at left:10px. */
+.input-affix .amount-input {
+  padding-left: 28px;
 }
