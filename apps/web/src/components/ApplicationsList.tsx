@@ -87,6 +87,7 @@ export function ApplicationsList() {
   const table = useReactTable({
     data: pageApplications,
     columns,
+    getRowId: (application) => application.id,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     pageCount,
