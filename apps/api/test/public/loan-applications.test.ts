@@ -5,6 +5,7 @@ import {
   approvalInput,
   createTestContext,
   InMemoryLoanRepository,
+  supportAgent,
 } from "../support/in-memory-repository.js";
 
 describe("loan application public examples", () => {
@@ -48,6 +49,19 @@ describe("loan application public examples", () => {
 
     expect(result.status).toBe("REJECTED");
     expect(result.approvedAmountMinor).toBeNull();
+  });
+
+  it("forbids a support user from recording a decision", async () => {
+    const repository = new InMemoryLoanRepository();
+    const caller = appRouter.createCaller(createTestContext(repository, supportAgent));
+
+    await expect(caller.loanApplications.decide(approvalInput())).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+
+    expect(repository.application.status).toBe("PENDING_REVIEW");
+    expect(repository.application.approvedAmountMinor).toBeNull();
+    expect(repository.audits).toHaveLength(0);
   });
 
   it("rejects an obviously empty reason at the input boundary", async () => {

@@ -19,8 +19,11 @@ const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 });
 
 export const underwriterProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  if (!ctx.session.user.role) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+  if (ctx.session.user.role !== "UNDERWRITER") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only an underwriter may record a loan decision",
+    });
   }
   return next({ ctx });
 });
