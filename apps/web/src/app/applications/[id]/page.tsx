@@ -4,8 +4,6 @@ import { useParams } from "next/navigation";
 import { DecisionForm, type DecisionFormValue } from "@/components/DecisionForm";
 import { trpc } from "@/lib/trpc";
 
-import { Providers } from "../../providers";
-
 function formatMoney(minor: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" }).format(minor / 100);
 }
@@ -14,8 +12,18 @@ function ApplicationReview() {
   const params = useParams<{ id: string }>();
   const applicationId = params.id;
 
+  const utils = trpc.useUtils();
   const application = trpc.loanApplications.getForReview.useQuery({ applicationId });
-  const decide = trpc.loanApplications.decide.useMutation();
+  // Without invalidation the screen keeps showing the pre-decision status with a
+  // live form, inviting a duplicate submission.
+  const decide = trpc.loanApplications.decide.useMutation({
+    async onSuccess() {
+      await Promise.all([
+        utils.loanApplications.getForReview.invalidate({ applicationId }),
+        utils.loanApplications.list.invalidate(),
+      ]);
+    },
+  });
 
   if (application.isPending) {
     return <main className="shell">Loading application…</main>;
@@ -90,9 +98,5 @@ function ApplicationReview() {
 }
 
 export default function ApplicationReviewPage() {
-  return (
-    <Providers>
-      <ApplicationReview />
-    </Providers>
-  );
+  return <ApplicationReview />;
 }
