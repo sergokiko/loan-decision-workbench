@@ -38,6 +38,9 @@ await server.register(fastifyTRPCPlugin, {
           info(context, message) {
             server.log.info(context, message);
           },
+          error(context, message) {
+            server.log.error(context, message);
+          },
         },
       };
     },

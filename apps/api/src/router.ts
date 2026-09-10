@@ -9,7 +9,19 @@ import type {
   RequestContext,
 } from "./domain.js";
 
-const t = initTRPC.context<RequestContext>().create({ transformer: superjson });
+const t = initTRPC.context<RequestContext>().create({
+  transformer: superjson,
+  // An unexpected failure must not leak its message or stack to the client.
+  // Expected domain errors keep their message so the UI can act on them.
+  errorFormatter({ shape, error }) {
+    const data = { ...shape.data };
+    delete data.stack;
+    if (error.code === "INTERNAL_SERVER_ERROR") {
+      return { ...shape, message: "Something went wrong. Please try again.", data };
+    }
+    return { ...shape, data };
+  },
+});
 
 const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.session) {
@@ -110,10 +122,26 @@ export const appRouter = t.router({
           };
 
           return response;
-        } catch {
+        } catch (error: unknown) {
+          // Domain errors are the answer, not a failure: pass them through.
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+
+          ctx.logger.error(
+            {
+              applicationId: input.applicationId,
+              actorId: ctx.session.user.id,
+              decision: input.decision,
+              error,
+            },
+            "Loan decision failed unexpectedly",
+          );
+
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "Decision failed",
+            cause: error,
           });
         }
       }),

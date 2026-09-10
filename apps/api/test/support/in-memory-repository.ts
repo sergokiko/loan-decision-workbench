@@ -66,9 +66,15 @@ export class InMemoryLoanRepository implements LoanRepository {
 
 export class CapturingLogger implements AppLogger {
   events: Array<{ context: Record<string, unknown>; message: string }> = [];
+  errors: Array<{ context: Record<string, unknown>; message: string }> = [];
 
   info(context: Record<string, unknown>, message: string): void {
     this.events.push({ context: clone(context), message });
+  }
+
+  error(context: Record<string, unknown>, message: string): void {
+    // Not cloned: the context carries the original Error, which structuredClone rejects.
+    this.errors.push({ context, message });
   }
 }
 
