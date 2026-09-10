@@ -58,7 +58,6 @@ export interface AuditRecordInput {
 export interface LoanRepository {
   findApplication(id: string): Promise<LoanApplicationRecord | null>;
   listApplications(): Promise<LoanApplicationRecord[]>;
-  deleteApplication(id: string): Promise<LoanApplicationRecord>;
   updateApplication(
     id: string,
     decision: LoanDecision,

@@ -42,13 +42,6 @@ export class InMemoryLoanRepository implements LoanRepository {
     return [clone(this.application)];
   }
 
-  async deleteApplication(id: string): Promise<LoanApplicationRecord> {
-    if (id !== this.application.id) {
-      throw new Error("Application not found");
-    }
-    return clone(this.application);
-  }
-
   async updateApplication(
     id: string,
     decision: LoanDecision,

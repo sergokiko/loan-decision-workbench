@@ -58,11 +58,6 @@ export class PrismaLoanRepository implements LoanRepository {
     return applications.map(toRecord);
   }
 
-  async deleteApplication(id: string): Promise<LoanApplicationRecord> {
-    const application = await this.client.loanApplication.delete({ where: { id } });
-    return toRecord(application);
-  }
-
   async updateApplication(
     id: string,
     decision: LoanDecision,

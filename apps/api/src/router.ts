@@ -58,13 +58,6 @@ export const appRouter = t.router({
       return applications.map(toView);
     }),
 
-    delete: t.procedure
-      .input(z.object({ applicationId: z.string().min(1) }))
-      .mutation(async ({ ctx, input }) => {
-        const application = await ctx.repository.deleteApplication(input.applicationId);
-        return toView(application);
-      }),
-
     getForReview: protectedProcedure
       .input(z.object({ applicationId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
