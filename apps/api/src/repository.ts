@@ -11,6 +11,22 @@ import type {
   LoanRepository,
 } from "./domain.js";
 
+// Exhaustive by construction: adding a status to the Prisma enum without
+// mapping it here becomes a compile error rather than a silent bad cast.
+const DOMAIN_STATUS: Record<PrismaLoanApplicationStatus, LoanApplicationStatus> = {
+  PENDING_REVIEW: "PENDING_REVIEW",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+};
+
+function toDomainStatus(status: PrismaLoanApplicationStatus): LoanApplicationStatus {
+  const mapped = DOMAIN_STATUS[status];
+  if (!mapped) {
+    throw new Error(`Unmapped loan application status: ${status}`);
+  }
+  return mapped;
+}
+
 function toRecord(application: {
   id: string;
   status: PrismaLoanApplicationStatus;
@@ -27,7 +43,7 @@ function toRecord(application: {
 }): LoanApplicationRecord {
   return {
     id: application.id,
-    status: application.status as LoanApplicationStatus,
+    status: toDomainStatus(application.status),
     requestedAmountMinor: application.requestedAmountMinor,
     approvedAmountMinor: application.approvedAmountMinor,
     customer: {

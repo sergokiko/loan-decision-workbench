@@ -40,11 +40,17 @@ export const underwriterProcedure = protectedProcedure.use(async ({ ctx, next })
   return next({ ctx });
 });
 
+// PostgreSQL INTEGER: amounts above this cannot be stored and must be rejected
+// at the boundary rather than surfacing as a driver error.
+const MAX_INT4 = 2_147_483_647;
+
 export const decideLoanApplicationSchema = z.object({
-  applicationId: z.string().min(1),
+  applicationId: z.string().min(1).max(200),
   decision: z.enum(["APPROVED", "REJECTED"]),
-  approvedAmountMinor: z.number().optional(),
-  reason: z.string().min(1),
+  approvedAmountMinor: z.number().int().positive().max(MAX_INT4).optional(),
+  // Trimmed before validation, so whitespace-only is rejected here and the
+  // stored reason is normalised. Bounded so it cannot grow without limit.
+  reason: z.string().trim().min(1).max(1_000),
 });
 
 function toView(application: LoanApplicationRecord): LoanApplicationView {
@@ -89,8 +95,17 @@ export const appRouter = t.router({
             throw new TRPCError({ code: "NOT_FOUND", message: "Application not found" });
           }
 
+          // Identifiers and the transition only. The application record carries
+          // nationalId, taxId, phone, email and income, and the reason is free
+          // text, so none of it belongs in an application log.
           ctx.logger.info(
-            { input, application, user: ctx.session.user },
+            {
+              applicationId: application.id,
+              actorId: ctx.session.user.id,
+              from: application.status,
+              decision: input.decision,
+              approvedAmountMinor: input.approvedAmountMinor ?? null,
+            },
             "Processing loan decision",
           );
 
@@ -115,13 +130,11 @@ export const appRouter = t.router({
             reason: input.reason,
           });
 
-          const response = {
+          return {
             applicationId: updated.id,
-            status: input.decision,
+            status: updated.status,
             approvedAmountMinor: updated.approvedAmountMinor,
           };
-
-          return response;
         } catch (error: unknown) {
           // Domain errors are the answer, not a failure: pass them through.
           if (error instanceof TRPCError) {
